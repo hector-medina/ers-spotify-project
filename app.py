@@ -20,13 +20,13 @@ st.markdown(
     """
 <style>
 .stApp {
-    background: linear-gradient(180deg, #191414 0%, #121212 45%, #000000 100%);
-    color: #FFFFFF;
+    background: linear-gradient(180deg, #FFFFFF 0%, #F6F7F8 45%, #EEF0F2 100%);
+    color: #111111;
 }
 
 section[data-testid="stSidebar"] {
-    background-color: #000000;
-    border-right: 1px solid #242424;
+    background-color: #FFFFFF;
+    border-right: 1px solid #E5E7EB;
 }
 
 section[data-testid="stSidebar"] h1,
@@ -34,7 +34,7 @@ section[data-testid="stSidebar"] h2,
 section[data-testid="stSidebar"] h3,
 section[data-testid="stSidebar"] label,
 section[data-testid="stSidebar"] p {
-    color: #FFFFFF !important;
+    color: #111111 !important;
 }
 
 section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
@@ -52,7 +52,7 @@ section[data-testid="stSidebar"] div[data-baseweb="select"] svg {
 }
 
 h1, h2, h3 {
-    color: #FFFFFF;
+    color: #111111;
     font-weight: 800;
 }
 
@@ -60,11 +60,11 @@ h1, h2, h3 {
     font-size: 3.2rem;
     font-weight: 900;
     margin-bottom: 0.2rem;
-    color: #FFFFFF;
+    color: #111111;
 }
 
 .subtitle {
-    color: #B3B3B3;
+    color: #555555;
     font-size: 1.05rem;
     margin-bottom: 2rem;
 }
@@ -81,9 +81,9 @@ h1, h2, h3 {
 }
 
 .warning-box {
-    background-color: #332500;
-    border: 1px solid #b8860b;
-    color: #f5d57a;
+    background-color: #FFF7D6;
+    border: 1px solid #E3B341;
+    color: #4A3700;
     padding: 1rem;
     border-radius: 14px;
     margin-top: 1rem;
@@ -91,37 +91,43 @@ h1, h2, h3 {
 }
 
 div[data-testid="stMetric"] {
-    background-color: #181818;
+    background-color: #FFFFFF;
     padding: 1rem;
     border-radius: 16px;
-    border: 1px solid #282828;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0px 4px 16px rgba(0, 0, 0, 0.05);
 }
 
 div[data-testid="stMetricLabel"] {
-    color: #B3B3B3 !important;
+    color: #555555 !important;
 }
 
 div[data-testid="stMetricValue"] {
-    color: #FFFFFF !important;
+    color: #111111 !important;
 }
 
 div[data-testid="stTabs"] button {
-    color: #FFFFFF !important;
+    color: #111111 !important;
+}
+
+div[data-testid="stMarkdownContainer"] {
+    color: #111111;
 }
 
 .song-card {
     display: flex;
     align-items: center;
-    background-color: #181818;
-    border: 1px solid #282828;
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
     border-radius: 16px;
     margin-bottom: 0.75rem;
     overflow: hidden;
     min-height: 86px;
+    box-shadow: 0px 4px 16px rgba(0, 0, 0, 0.04);
 }
 
 .song-card:hover {
-    background-color: #202020;
+    background-color: #F8FAFC;
     transition: 0.15s ease-in-out;
 }
 
@@ -138,12 +144,12 @@ div[data-testid="stTabs"] button {
 .song-title {
     font-size: 1.05rem;
     font-weight: 800;
-    color: #FFFFFF;
+    color: #111111;
     margin-bottom: 0.2rem;
 }
 
 .song-meta {
-    color: #B3B3B3;
+    color: #555555;
     font-size: 0.9rem;
 }
 
@@ -154,13 +160,13 @@ div[data-testid="stTabs"] button {
 }
 
 .song-value-label {
-    color: #B3B3B3;
+    color: #555555;
     font-size: 0.8rem;
     margin-bottom: 0.15rem;
 }
 
 .song-value {
-    color: #FFFFFF;
+    color: #111111;
     font-size: 1.5rem;
     font-weight: 900;
 }
@@ -178,7 +184,7 @@ div[data-testid="stTabs"] button {
 .mini-progress-bg {
     width: 100%;
     height: 8px;
-    background-color: #333333;
+    background-color: #E5E7EB;
     border-radius: 999px;
     margin-top: 0.45rem;
     overflow: hidden;
@@ -187,6 +193,15 @@ div[data-testid="stTabs"] button {
 .mini-progress-fill {
     height: 8px;
     border-radius: 999px;
+}
+
+/* Radio buttons y textos secundarios */
+div[role="radiogroup"] label {
+    color: #111111 !important;
+}
+
+small, .stCaptionContainer {
+    color: #555555 !important;
 }
 </style>
     """,
@@ -238,9 +253,6 @@ def render_song_card(row, selected_feature, selected_feature_label):
     feature_label = html.escape(selected_feature_label)
     year_text = "" if pd.isna(year) else str(int(year))
 
-    # Importante:
-    # Este HTML se genera sin indentación inicial.
-    # Si se indenta con 4 espacios, Streamlit/Markdown lo puede mostrar como código.
     card_html = (
         f'<div class="song-card">'
         f'<div class="song-bar" style="background-color:{color};"></div>'
@@ -436,13 +448,13 @@ with tab1:
                 "duration_ms": False,
             },
             title=f"Mapa musical de {selected_artist}",
-            template="plotly_dark",
+            template="plotly_white",
         )
 
         fig.update_layout(
-            paper_bgcolor="#121212",
-            plot_bgcolor="#121212",
-            font_color="#FFFFFF",
+            paper_bgcolor="#FFFFFF",
+            plot_bgcolor="#FFFFFF",
+            font_color="#111111",
             legend_title_text="Álbum",
         )
 
@@ -476,13 +488,13 @@ with tab2:
             y=selected_feature,
             hover_data=["tracks", "year"],
             title=f"{selected_feature_label} media por álbum",
-            template="plotly_dark",
+            template="plotly_white",
         )
 
         fig_bar.update_layout(
-            paper_bgcolor="#121212",
-            plot_bgcolor="#121212",
-            font_color="#FFFFFF",
+            paper_bgcolor="#FFFFFF",
+            plot_bgcolor="#FFFFFF",
+            font_color="#111111",
             xaxis_title="Álbum",
             yaxis_title=selected_feature_label,
         )
