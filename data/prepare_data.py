@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-prepare_data.py
+data/prepare_data.py
 
 Este script prepara un dataset pequeño para desplegar la app en Streamlit.
 
 Entrada:
-    tracks_features.csv
+    data/tracks_features.csv
 
 Salida:
     data/spotify_studio_tracks_10_artists.csv
@@ -14,32 +14,36 @@ Qué hace:
     1. Carga el dataset grande de Spotify.
     2. Extrae el artista principal desde la columna artists.
     3. Limpia el nombre de los álbumes.
-    4. Filtra solo los 10 artistas definidos en studio_albums_10.py.
+    4. Filtra solo los 10 artistas definidos en app/spotify_app/domain/studio_albums.py.
     5. Filtra solo canciones pertenecientes a álbumes de estudio.
     6. Elimina duplicados.
     7. Guarda un CSV pequeño para usar en Streamlit.
 
 Uso:
-    python3 prepare_data.py
+    python data/prepare_data.py
 
 Requisitos:
-    - tracks_features.csv debe estar en la raíz del proyecto.
-    - studio_albums_10.py debe estar en la raíz del proyecto.
+    - data/tracks_features.csv debe existir.
 """
 
 import ast
 import os
 import re
+import sys
 from pathlib import Path
 
 import pandas as pd
 
-from studio_albums_10 import STUDIO_ALBUMS, normalize_text
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from app.spotify_app.domain.studio_albums import STUDIO_ALBUMS, normalize_text
 
 
-INPUT_CSV = "tracks_features.csv"
-OUTPUT_DIR = Path("data")
-OUTPUT_CSV = OUTPUT_DIR / "spotify_studio_tracks_10_artists.csv"
+DATA_DIR = Path(__file__).resolve().parent
+INPUT_CSV = DATA_DIR / "tracks_features.csv"
+OUTPUT_CSV = DATA_DIR / "spotify_studio_tracks_10_artists.csv"
 
 
 USE_COLUMNS = [
@@ -163,7 +167,7 @@ def main():
     if not os.path.exists(INPUT_CSV):
         raise FileNotFoundError(
             f"No se encuentra {INPUT_CSV}. "
-            "Pon tracks_features.csv en la raíz del proyecto antes de ejecutar este script."
+            "Pon tracks_features.csv dentro del directorio data antes de ejecutar este script."
         )
 
     print("Cargando dataset grande...")
@@ -251,7 +255,7 @@ def main():
 
     df = df[final_columns].reset_index(drop=True)
 
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     print(f"Guardando CSV final en: {OUTPUT_CSV}")
     df.to_csv(OUTPUT_CSV, index=False)

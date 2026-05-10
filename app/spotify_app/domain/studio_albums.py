@@ -1,11 +1,11 @@
 """
-studio_albums_10.py
+app/spotify_app/domain/studio_albums.py
 
-Lista cerrada de álbumes de estudio para 10 artistas presentes en tracks_features.csv.
+Lista cerrada de álbumes de estudio para 10 artistas presentes en data/tracks_features.csv.
 
 Uso en notebook:
 
-    from studio_albums_10 import STUDIO_ALBUMS, get_studio_albums, filter_studio_albums
+    from spotify_app.domain.studio_albums import STUDIO_ALBUMS, get_studio_albums, filter_studio_albums
 
     get_studio_albums("Radiohead")
 
