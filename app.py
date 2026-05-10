@@ -4,6 +4,7 @@ import plotly.express as px
 import html
 
 from studio_albums_10 import STUDIO_ALBUMS
+from lyrics_service import fetch_lyrics, analyze_lyrics
 
 
 DATA_PATH = "data/spotify_studio_tracks_10_artists.csv"
@@ -270,6 +271,11 @@ def load_data():
     return pd.read_csv(DATA_PATH)
 
 
+@st.cache_data(ttl=24 * 60 * 60, show_spinner=False)
+def get_cached_lyrics(title, artist):
+    return fetch_lyrics(title=title, artist=artist)
+
+
 def format_duration(ms):
     if pd.isna(ms):
         return ""
@@ -432,23 +438,74 @@ def render_song_detail_content(song_data, selected_feature, selected_feature_lab
     with right:
         st.markdown("### Letra de la canción")
 
-        lyrics_placeholder = (
-            "Aquí se mostrará la letra de la canción cuando se añada la integración.\n\n"
-            "Ejemplo futuro:\n"
-            "- buscar letra usando artista + título\n"
-            "- consultar lyrics.ovh u otra fuente\n"
-            "- mostrar la letra aquí\n"
-            "- calcular métricas de texto: palabras frecuentes, longitud, diversidad léxica..."
-        )
+        with st.spinner("Buscando letra en lyrics.ovh..."):
+            lyrics_result = get_cached_lyrics(
+                title=str(song_row.get("name", "")),
+                artist=str(song_row.get("primary_artist", "")),
+            )
 
-        st.markdown(
-            f"""
+        if lyrics_result["status"]:
+            lyrics = lyrics_result["lyrics"]
+            lyrics_stats = analyze_lyrics(lyrics)
+
+            st.success(
+                f"Letra encontrada usando: "
+                f"{lyrics_result['artist_query']} - {lyrics_result['title_query']}"
+            )
+
+            k1, k2, k3, k4 = st.columns(4)
+            k1.metric("Líneas", lyrics_stats["line_count"])
+            k2.metric("Palabras", lyrics_stats["word_count"])
+            k3.metric("Únicas", lyrics_stats["unique_words"])
+            k4.metric("Diversidad", f"{lyrics_stats['lexical_diversity']:.2f}")
+
+            st.text_area(
+                "Letra",
+                value=lyrics,
+                height=320,
+                disabled=True,
+                label_visibility="collapsed",
+            )
+
+            if lyrics_stats["top_words"]:
+                st.markdown("#### Palabras más frecuentes")
+
+                top_words_df = pd.DataFrame(
+                    lyrics_stats["top_words"],
+                    columns=["Palabra", "Frecuencia"],
+                )
+
+                fig_words = px.bar(
+                    top_words_df,
+                    x="Palabra",
+                    y="Frecuencia",
+                    template="plotly_white",
+                    title="Top palabras de la letra",
+                )
+
+                fig_words.update_layout(
+                    paper_bgcolor="#FFFFFF",
+                    plot_bgcolor="#FFFFFF",
+                    font_color="#111111",
+                    margin=dict(l=10, r=10, t=50, b=10),
+                )
+
+                st.plotly_chart(fig_words, width="stretch")
+
+        else:
+            st.warning(lyrics_result["error"])
+            st.markdown(
+                f"""
 <div class="lyrics-placeholder">
-<pre style="white-space: pre-wrap; font-family: inherit; margin: 0;">{html.escape(lyrics_placeholder)}</pre>
+<b>No se pudo obtener la letra automáticamente.</b><br><br>
+Consulta intentada:<br>
+Artista: <code>{html.escape(lyrics_result.get("artist_query", ""))}</code><br>
+Título: <code>{html.escape(lyrics_result.get("title_query", ""))}</code><br><br>
+Aquí se mostrará la letra cuando la API devuelva resultados.
 </div>
-            """,
-            unsafe_allow_html=True,
-        )
+                """,
+                unsafe_allow_html=True,
+            )
 
 
 @st.dialog("Detalle de canción", width="large")
