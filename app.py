@@ -191,28 +191,6 @@ div[data-testid="stMarkdownContainer"] {
     border-radius: 999px;
 }
 
-.detail-card {
-    background-color: #FFFFFF;
-    border: 1px solid #E5E7EB;
-    border-radius: 20px;
-    padding: 1.3rem;
-    box-shadow: 0px 8px 28px rgba(0, 0, 0, 0.08);
-    margin-bottom: 1.5rem;
-}
-
-.detail-title {
-    font-size: 2rem;
-    font-weight: 900;
-    color: #111111;
-    margin-bottom: 0.2rem;
-}
-
-.detail-subtitle {
-    color: #555555;
-    font-size: 1rem;
-    margin-bottom: 1rem;
-}
-
 .feature-row {
     margin-bottom: 0.8rem;
 }
@@ -245,7 +223,27 @@ div[data-testid="stMarkdownContainer"] {
     border-radius: 16px;
     padding: 1rem;
     color: #334155;
-    min-height: 180px;
+    min-height: 220px;
+}
+
+.modal-hero {
+    background: linear-gradient(135deg, #1DB954 0%, #E9F8EF 55%, #FFFFFF 100%);
+    border-radius: 22px;
+    padding: 1.4rem;
+    border: 1px solid #D8F3E0;
+    margin-bottom: 1rem;
+}
+
+.modal-title {
+    font-size: 2.2rem;
+    font-weight: 900;
+    color: #111111;
+    margin-bottom: 0.25rem;
+}
+
+.modal-subtitle {
+    color: #333333;
+    font-size: 1.05rem;
 }
 
 div[role="radiogroup"] label {
@@ -254,6 +252,12 @@ div[role="radiogroup"] label {
 
 small, .stCaptionContainer {
     color: #555555 !important;
+}
+
+/* Intento de modal grande. Si Streamlit cambia el DOM, se ignora sin romper la app. */
+div[data-testid="stDialog"] div[role="dialog"] {
+    width: 92vw !important;
+    max-width: 1280px !important;
 }
 </style>
     """,
@@ -349,7 +353,9 @@ def render_song_card(row, selected_feature, selected_feature_label):
     st.markdown(card_html, unsafe_allow_html=True)
 
 
-def render_song_detail(song_row, selected_feature, selected_feature_label):
+def render_song_detail_content(song_data, selected_feature, selected_feature_label):
+    song_row = pd.Series(song_data)
+
     song_name = html.escape(str(song_row.get("name", "")))
     album = html.escape(str(song_row.get("studio_album", "")))
     artist = html.escape(str(song_row.get("primary_artist", "")))
@@ -371,9 +377,9 @@ def render_song_detail(song_row, selected_feature, selected_feature_label):
 
     st.markdown(
         f"""
-<div class="detail-card">
-    <div class="detail-title">{song_name}</div>
-    <div class="detail-subtitle">{artist} · {album} · {year_text}</div>
+<div class="modal-hero">
+    <div class="modal-title">{song_name}</div>
+    <div class="modal-subtitle">{artist} · {album} · {year_text}</div>
 </div>
         """,
         unsafe_allow_html=True,
@@ -396,7 +402,7 @@ def render_song_detail(song_row, selected_feature, selected_feature_label):
         unsafe_allow_html=True,
     )
 
-    left, right = st.columns([1.1, 1])
+    left, right = st.columns([1, 1.25])
 
     with left:
         st.markdown("### Características musicales")
@@ -409,7 +415,6 @@ def render_song_detail(song_row, selected_feature, selected_feature_label):
         normalized_feature_bar("Liveness", song_row.get("liveness", None))
         normalized_feature_bar("Speechiness", song_row.get("speechiness", None))
 
-    with right:
         st.markdown("### Información adicional")
 
         info_rows = {
@@ -424,6 +429,7 @@ def render_song_detail(song_row, selected_feature, selected_feature_label):
         for key, value in info_rows.items():
             st.write(f"**{key}:** {value}")
 
+    with right:
         st.markdown("### Letra de la canción")
 
         lyrics_placeholder = (
@@ -443,6 +449,15 @@ def render_song_detail(song_row, selected_feature, selected_feature_label):
             """,
             unsafe_allow_html=True,
         )
+
+
+@st.dialog("Detalle de canción", width="large")
+def song_detail_dialog(song_data, selected_feature, selected_feature_label):
+    render_song_detail_content(song_data, selected_feature, selected_feature_label)
+
+    st.write("")
+    if st.button("Cerrar", type="primary"):
+        st.rerun()
 
 
 df = load_data()
@@ -467,10 +482,6 @@ numeric_cols = [
 for col in numeric_cols:
     if col in df.columns:
         df[col] = pd.to_numeric(df[col], errors="coerce")
-
-
-if "selected_song_id" not in st.session_state:
-    st.session_state.selected_song_id = None
 
 
 # ---------- Sidebar ----------
@@ -520,12 +531,6 @@ selected_feature_label = st.sidebar.selectbox(
 )
 
 selected_feature = feature_options[selected_feature_label]
-
-
-# Si se cambia de artista/álbum y la canción seleccionada ya no está en la vista, se limpia.
-if st.session_state.selected_song_id is not None:
-    if st.session_state.selected_song_id not in set(view_df["id"].astype(str)):
-        st.session_state.selected_song_id = None
 
 
 # ---------- Header ----------
@@ -762,14 +767,5 @@ else:
             st.write("")
             st.write("")
             if st.button("Ver detalle", key=f"detail_{song_id}", width="stretch"):
-                st.session_state.selected_song_id = song_id
-
-    if st.session_state.selected_song_id is not None:
-        selected_rows = table_df[table_df["id"].astype(str) == st.session_state.selected_song_id]
-
-        if not selected_rows.empty:
-            st.divider()
-            st.markdown("## Detalle de canción seleccionada")
-
-            selected_song = selected_rows.iloc[0]
-            render_song_detail(selected_song, selected_feature, selected_feature_label)
+                song_data = row.to_dict()
+                song_detail_dialog(song_data, selected_feature, selected_feature_label)
