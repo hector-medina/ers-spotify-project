@@ -106,10 +106,6 @@ div[data-testid="stMetricValue"] {
     color: #111111 !important;
 }
 
-div[data-testid="stTabs"] button {
-    color: #111111 !important;
-}
-
 div[data-testid="stMarkdownContainer"] {
     color: #111111;
 }
@@ -195,7 +191,6 @@ div[data-testid="stMarkdownContainer"] {
     border-radius: 999px;
 }
 
-/* Radio buttons y textos secundarios */
 div[role="radiogroup"] label {
     color: #111111 !important;
 }
@@ -290,6 +285,7 @@ for col in numeric_cols:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
 
+# ---------- Sidebar ----------
 st.sidebar.markdown("## 🎧 Spotify Explorer")
 
 artists = sorted(df["primary_artist"].dropna().unique())
@@ -338,6 +334,7 @@ selected_feature_label = st.sidebar.selectbox(
 selected_feature = feature_options[selected_feature_label]
 
 
+# ---------- Header ----------
 st.markdown(
     """
 <div class="main-title">Spotify Studio Albums Explorer</div>
@@ -351,6 +348,7 @@ st.markdown(f'<span class="green-pill">{selected_artist}</span>', unsafe_allow_h
 st.markdown(f"## {selected_artist}")
 
 
+# ---------- Métricas ----------
 col1, col2, col3, col4 = st.columns(4)
 
 col1.metric("Canciones en el dataset", len(view_df))
@@ -382,6 +380,7 @@ Por eso el contador muestra únicamente los álbumes presentes en los datos disp
     )
 
 
+# ---------- Álbumes ----------
 st.markdown("## Álbumes encontrados en el dataset")
 
 if present_albums.empty:
@@ -417,142 +416,145 @@ with st.expander("Ver discografía de estudio usada como referencia"):
         st.write(missing_albums)
 
 
-tab1, tab2, tab3 = st.tabs(
-    [
-        "Exploración musical",
-        "Comparación por álbum",
-        "Canciones",
-    ]
-)
+st.divider()
 
 
-with tab1:
-    st.markdown("### Valence vs Acousticness")
+# ---------- Sección 1: Exploración musical ----------
+st.markdown("## Exploración musical")
+st.markdown("### Valence vs Acousticness")
 
-    if view_df.empty:
-        st.warning("No hay datos para mostrar.")
+if view_df.empty:
+    st.warning("No hay datos para mostrar.")
+else:
+    fig = px.scatter(
+        view_df,
+        x="valence",
+        y="acousticness",
+        color="studio_album",
+        size="duration_ms",
+        hover_name="name",
+        hover_data={
+            "studio_album": True,
+            "year": True,
+            "energy": ":.2f",
+            "danceability": ":.2f",
+            "tempo": ":.1f",
+            "duration_ms": False,
+        },
+        title=f"Mapa musical de {selected_artist}",
+        template="plotly_white",
+    )
+
+    fig.update_layout(
+        paper_bgcolor="#FFFFFF",
+        plot_bgcolor="#FFFFFF",
+        font_color="#111111",
+        legend_title_text="Álbum",
+    )
+
+    st.plotly_chart(fig, width="stretch")
+
+
+st.divider()
+
+
+# ---------- Sección 2: Comparación por álbum ----------
+st.markdown("## Comparación por álbum")
+st.markdown(f"### {selected_feature_label} media por álbum")
+
+if view_df.empty:
+    st.warning("No hay datos para mostrar.")
+else:
+    album_summary = (
+        artist_df
+        .groupby("studio_album")
+        .agg(
+            tracks=("name", "count"),
+            acousticness=("acousticness", "mean"),
+            danceability=("danceability", "mean"),
+            energy=("energy", "mean"),
+            valence=("valence", "mean"),
+            year=("year", "min"),
+        )
+        .reset_index()
+        .sort_values("year")
+    )
+
+    fig_bar = px.bar(
+        album_summary,
+        x="studio_album",
+        y=selected_feature,
+        hover_data=["tracks", "year"],
+        title=f"{selected_feature_label} media por álbum",
+        template="plotly_white",
+    )
+
+    fig_bar.update_layout(
+        paper_bgcolor="#FFFFFF",
+        plot_bgcolor="#FFFFFF",
+        font_color="#111111",
+        xaxis_title="Álbum",
+        yaxis_title=selected_feature_label,
+    )
+
+    st.plotly_chart(fig_bar, width="stretch")
+
+    summary_to_show = album_summary[
+        [
+            "studio_album",
+            "year",
+            "tracks",
+            selected_feature,
+        ]
+    ].rename(
+        columns={
+            "studio_album": "Álbum",
+            "year": "Año",
+            "tracks": "Canciones",
+            selected_feature: selected_feature_label,
+        }
+    )
+
+    st.dataframe(
+        summary_to_show,
+        width="stretch",
+        hide_index=True,
+    )
+
+
+st.divider()
+
+
+# ---------- Sección 3: Canciones ----------
+st.markdown("## Canciones")
+st.markdown(f"### Canciones ordenadas por {selected_feature_label}")
+
+if view_df.empty:
+    st.warning("No hay canciones para mostrar.")
+else:
+    table_df = view_df.copy()
+
+    if "duration_ms" in table_df.columns:
+        table_df["duration"] = table_df["duration_ms"].apply(format_duration)
+
+    sort_option = st.radio(
+        "Ordenar canciones",
+        [
+            "Orden original del álbum",
+            f"{selected_feature_label} alto a bajo",
+            f"{selected_feature_label} bajo a alto",
+        ],
+        horizontal=True,
+    )
+
+    if sort_option == f"{selected_feature_label} alto a bajo":
+        table_df = table_df.sort_values(selected_feature, ascending=False)
+    elif sort_option == f"{selected_feature_label} bajo a alto":
+        table_df = table_df.sort_values(selected_feature, ascending=True)
     else:
-        fig = px.scatter(
-            view_df,
-            x="valence",
-            y="acousticness",
-            color="studio_album",
-            size="duration_ms",
-            hover_name="name",
-            hover_data={
-                "studio_album": True,
-                "year": True,
-                "energy": ":.2f",
-                "danceability": ":.2f",
-                "tempo": ":.1f",
-                "duration_ms": False,
-            },
-            title=f"Mapa musical de {selected_artist}",
-            template="plotly_white",
-        )
+        table_df = table_df.sort_values(["year", "studio_album", "track_number", "name"])
 
-        fig.update_layout(
-            paper_bgcolor="#FFFFFF",
-            plot_bgcolor="#FFFFFF",
-            font_color="#111111",
-            legend_title_text="Álbum",
-        )
+    st.caption("Rojo: < 0.33 · Amarillo: 0.33 - 0.66 · Verde: ≥ 0.66")
 
-        st.plotly_chart(fig, width="stretch")
-
-
-with tab2:
-    st.markdown(f"### {selected_feature_label} media por álbum")
-
-    if view_df.empty:
-        st.warning("No hay datos para mostrar.")
-    else:
-        album_summary = (
-            artist_df
-            .groupby("studio_album")
-            .agg(
-                tracks=("name", "count"),
-                acousticness=("acousticness", "mean"),
-                danceability=("danceability", "mean"),
-                energy=("energy", "mean"),
-                valence=("valence", "mean"),
-                year=("year", "min"),
-            )
-            .reset_index()
-            .sort_values("year")
-        )
-
-        fig_bar = px.bar(
-            album_summary,
-            x="studio_album",
-            y=selected_feature,
-            hover_data=["tracks", "year"],
-            title=f"{selected_feature_label} media por álbum",
-            template="plotly_white",
-        )
-
-        fig_bar.update_layout(
-            paper_bgcolor="#FFFFFF",
-            plot_bgcolor="#FFFFFF",
-            font_color="#111111",
-            xaxis_title="Álbum",
-            yaxis_title=selected_feature_label,
-        )
-
-        st.plotly_chart(fig_bar, width="stretch")
-
-        summary_to_show = album_summary[
-            [
-                "studio_album",
-                "year",
-                "tracks",
-                selected_feature,
-            ]
-        ].rename(
-            columns={
-                "studio_album": "Álbum",
-                "year": "Año",
-                "tracks": "Canciones",
-                selected_feature: selected_feature_label,
-            }
-        )
-
-        st.dataframe(
-            summary_to_show,
-            width="stretch",
-            hide_index=True,
-        )
-
-
-with tab3:
-    st.markdown(f"### Canciones ordenadas por {selected_feature_label}")
-
-    if view_df.empty:
-        st.warning("No hay canciones para mostrar.")
-    else:
-        table_df = view_df.copy()
-
-        if "duration_ms" in table_df.columns:
-            table_df["duration"] = table_df["duration_ms"].apply(format_duration)
-
-        sort_option = st.radio(
-            "Ordenar canciones",
-            [
-                "Orden original del álbum",
-                f"{selected_feature_label} alto a bajo",
-                f"{selected_feature_label} bajo a alto",
-            ],
-            horizontal=True,
-        )
-
-        if sort_option == f"{selected_feature_label} alto a bajo":
-            table_df = table_df.sort_values(selected_feature, ascending=False)
-        elif sort_option == f"{selected_feature_label} bajo a alto":
-            table_df = table_df.sort_values(selected_feature, ascending=True)
-        else:
-            table_df = table_df.sort_values(["year", "studio_album", "track_number", "name"])
-
-        st.caption("Rojo: < 0.33 · Amarillo: 0.33 - 0.66 · Verde: ≥ 0.66")
-
-        for _, row in table_df.iterrows():
-            render_song_card(row, selected_feature, selected_feature_label)
+    for _, row in table_df.iterrows():
+        render_song_card(row, selected_feature, selected_feature_label)
