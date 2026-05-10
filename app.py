@@ -191,6 +191,63 @@ div[data-testid="stMarkdownContainer"] {
     border-radius: 999px;
 }
 
+.detail-card {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 20px;
+    padding: 1.3rem;
+    box-shadow: 0px 8px 28px rgba(0, 0, 0, 0.08);
+    margin-bottom: 1.5rem;
+}
+
+.detail-title {
+    font-size: 2rem;
+    font-weight: 900;
+    color: #111111;
+    margin-bottom: 0.2rem;
+}
+
+.detail-subtitle {
+    color: #555555;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+}
+
+.feature-row {
+    margin-bottom: 0.8rem;
+}
+
+.feature-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.92rem;
+    color: #111111;
+    font-weight: 700;
+}
+
+.feature-bg {
+    width: 100%;
+    height: 10px;
+    background-color: #E5E7EB;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-top: 0.25rem;
+}
+
+.feature-fill {
+    height: 10px;
+    border-radius: 999px;
+}
+
+.lyrics-placeholder {
+    background-color: #F8FAFC;
+    border: 1px dashed #CBD5E1;
+    border-radius: 16px;
+    padding: 1rem;
+    color: #334155;
+    min-height: 180px;
+}
+
 div[role="radiogroup"] label {
     color: #111111 !important;
 }
@@ -227,6 +284,29 @@ def value_color(value):
     if value < 0.66:
         return "#FFD166", "Medio"
     return "#1DB954", "Alto"
+
+
+def normalized_feature_bar(label, value):
+    if pd.isna(value):
+        value = 0
+        value_text = "-"
+    else:
+        value = max(0, min(1, float(value)))
+        value_text = f"{value:.2f}"
+
+    color, level = value_color(value)
+    percentage = round(value * 100, 1)
+
+    bar_html = (
+        f'<div class="feature-row">'
+        f'<div class="feature-label"><span>{html.escape(label)}</span><span>{value_text} · {level}</span></div>'
+        f'<div class="feature-bg">'
+        f'<div class="feature-fill" style="width:{percentage}%; background-color:{color};"></div>'
+        f'</div>'
+        f'</div>'
+    )
+
+    st.markdown(bar_html, unsafe_allow_html=True)
 
 
 def render_song_card(row, selected_feature, selected_feature_label):
@@ -269,6 +349,102 @@ def render_song_card(row, selected_feature, selected_feature_label):
     st.markdown(card_html, unsafe_allow_html=True)
 
 
+def render_song_detail(song_row, selected_feature, selected_feature_label):
+    song_name = html.escape(str(song_row.get("name", "")))
+    album = html.escape(str(song_row.get("studio_album", "")))
+    artist = html.escape(str(song_row.get("primary_artist", "")))
+    year = song_row.get("year", "")
+    track_number = song_row.get("track_number", "")
+    duration = html.escape(str(song_row.get("duration", "")))
+    explicit = song_row.get("explicit", "")
+
+    year_text = "" if pd.isna(year) else str(int(year))
+    track_text = "" if pd.isna(track_number) else str(int(track_number))
+
+    selected_value = song_row.get(selected_feature, None)
+    selected_color, selected_level = value_color(selected_value)
+
+    if pd.isna(selected_value):
+        selected_value_text = "-"
+    else:
+        selected_value_text = f"{float(selected_value):.2f}"
+
+    st.markdown(
+        f"""
+<div class="detail-card">
+    <div class="detail-title">{song_name}</div>
+    <div class="detail-subtitle">{artist} · {album} · {year_text}</div>
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    m1, m2, m3, m4, m5 = st.columns(5)
+
+    m1.metric("Álbum", album)
+    m2.metric("Año", year_text)
+    m3.metric("Track", track_text)
+    m4.metric("Duración", duration)
+    m5.metric(selected_feature_label, selected_value_text)
+
+    st.markdown(
+        f"""
+<div style="margin-top: 0.5rem; margin-bottom: 1rem;">
+    <span class="song-level" style="background-color:{selected_color};">{selected_feature_label}: {selected_level}</span>
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    left, right = st.columns([1.1, 1])
+
+    with left:
+        st.markdown("### Características musicales")
+
+        normalized_feature_bar("Acousticness", song_row.get("acousticness", None))
+        normalized_feature_bar("Danceability", song_row.get("danceability", None))
+        normalized_feature_bar("Energy", song_row.get("energy", None))
+        normalized_feature_bar("Valence", song_row.get("valence", None))
+        normalized_feature_bar("Instrumentalness", song_row.get("instrumentalness", None))
+        normalized_feature_bar("Liveness", song_row.get("liveness", None))
+        normalized_feature_bar("Speechiness", song_row.get("speechiness", None))
+
+    with right:
+        st.markdown("### Información adicional")
+
+        info_rows = {
+            "Tempo": f"{song_row.get('tempo', '-'):.1f} BPM" if pd.notna(song_row.get("tempo", None)) else "-",
+            "Loudness": f"{song_row.get('loudness', '-'):.2f} dB" if pd.notna(song_row.get("loudness", None)) else "-",
+            "Key": song_row.get("key", "-"),
+            "Mode": song_row.get("mode", "-"),
+            "Time signature": song_row.get("time_signature", "-"),
+            "Explicit": "Sí" if explicit is True or str(explicit).lower() == "true" else "No",
+        }
+
+        for key, value in info_rows.items():
+            st.write(f"**{key}:** {value}")
+
+        st.markdown("### Letra de la canción")
+
+        lyrics_placeholder = (
+            "Aquí se mostrará la letra de la canción cuando se añada la integración.\n\n"
+            "Ejemplo futuro:\n"
+            "- buscar letra usando artista + título\n"
+            "- consultar lyrics.ovh u otra fuente\n"
+            "- mostrar la letra aquí\n"
+            "- calcular métricas de texto: palabras frecuentes, longitud, diversidad léxica..."
+        )
+
+        st.markdown(
+            f"""
+<div class="lyrics-placeholder">
+<pre style="white-space: pre-wrap; font-family: inherit; margin: 0;">{html.escape(lyrics_placeholder)}</pre>
+</div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
 df = load_data()
 
 numeric_cols = [
@@ -279,10 +455,22 @@ numeric_cols = [
     "tempo",
     "duration_ms",
     "year",
+    "instrumentalness",
+    "liveness",
+    "speechiness",
+    "loudness",
+    "key",
+    "mode",
+    "time_signature",
+    "track_number",
 ]
 for col in numeric_cols:
     if col in df.columns:
         df[col] = pd.to_numeric(df[col], errors="coerce")
+
+
+if "selected_song_id" not in st.session_state:
+    st.session_state.selected_song_id = None
 
 
 # ---------- Sidebar ----------
@@ -332,6 +520,12 @@ selected_feature_label = st.sidebar.selectbox(
 )
 
 selected_feature = feature_options[selected_feature_label]
+
+
+# Si se cambia de artista/álbum y la canción seleccionada ya no está en la vista, se limpia.
+if st.session_state.selected_song_id is not None:
+    if st.session_state.selected_song_id not in set(view_df["id"].astype(str)):
+        st.session_state.selected_song_id = None
 
 
 # ---------- Header ----------
@@ -557,4 +751,25 @@ else:
     st.caption("Rojo: < 0.33 · Amarillo: 0.33 - 0.66 · Verde: ≥ 0.66")
 
     for _, row in table_df.iterrows():
-        render_song_card(row, selected_feature, selected_feature_label)
+        song_id = str(row["id"])
+
+        c1, c2 = st.columns([8, 1.4])
+
+        with c1:
+            render_song_card(row, selected_feature, selected_feature_label)
+
+        with c2:
+            st.write("")
+            st.write("")
+            if st.button("Ver detalle", key=f"detail_{song_id}", width="stretch"):
+                st.session_state.selected_song_id = song_id
+
+    if st.session_state.selected_song_id is not None:
+        selected_rows = table_df[table_df["id"].astype(str) == st.session_state.selected_song_id]
+
+        if not selected_rows.empty:
+            st.divider()
+            st.markdown("## Detalle de canción seleccionada")
+
+            selected_song = selected_rows.iloc[0]
+            render_song_detail(selected_song, selected_feature, selected_feature_label)
